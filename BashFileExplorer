@@ -1,0 +1,592 @@
+#!/bin/bash
+
+bfe_NAME="BashFileExplorer"
+bfe_VERSION="1.0"
+bfe_RELEASE_DATE="05/08/2025"
+bfe_AUTHOR="ElSutien"
+
+
+# Declare for Colors
+declare bfe_BlackText="\e[30;47m"   # Text black,  Background gray
+declare bfe_Background="\e[47m"     # 	           Background gray
+declare bfe_TitleColor="\e[30;46m"  # Text black,  Backgounrd blue
+declare bfe_BlueText="\e[34;47m"    # Text blue,   Background gray
+declare bfe_GreenText="\e[32;47m"   # Text green,  Background gray
+declare bfe_PurpleText="\e[35;47m"  # Text purple, Background gray
+declare bfe_CursorColor="\e[0;43m"  # Text white,  Background yellow
+declare bfe_ClearColor="\e[0m"      # Default terminal color
+
+# Declare for cursor
+declare -i bfe_oldcursor=0     # Old cursor position
+declare -i bfe_cursor=0        # Current cursor position
+
+# Declare lists of files
+declare -a bfe_FileNameList    # File names list
+declare -a bfe_FilePermList    # File permisions list
+declare -a bfe_FileSizeList    # File sizes list
+
+# Declare for window properties
+declare bfe_winTitle="Bash File Explorer"
+declare bfe_message=""
+declare -i bfe_winw=$(tput cols)     # Window width
+declare -i bfe_winh=$(tput lines)-2  # Window height
+declare -i bfe_winsep=$bfe_winw/2    # Window midel width
+
+# Declare for Files Display
+declare -i bfe_maxFilesPerPage=$bfe_winh-7  # Showing files per page
+declare -i bfe_page=0	                      # Actual page index
+declare -i bfe_pageLen=0                    # Actual page length
+declare -i bfe_pagesNum=0                   # Number of pages
+
+# Declare of Flags
+declare -i bfe_isFullReload=1
+declare -i bfe_isPathChanged=1
+declare -i bfe_isSelectChanged=1
+declare -i bfe_isPageChanged=1
+declare -i bfe_isExit=0
+
+
+function bfeWinch_event() {
+  bfe_winw=$(tput cols)
+  bfe_winh=$(tput lines)-2
+  bfe_winsep=$bfe_winw/2
+  bfe_maxFilesPerPage=$bfe_winh-7
+  
+  bfe_oldcursor=0
+  bfe_cursor=0
+  bfe_page=0
+  
+  bfe_isPathChanged=1
+  bfe_isSelectChanged=1
+  bfe_isPageChanged=1
+  
+  #bfeDrawWindow
+  #bfeDrawUI
+  bfe_isFullReload=1
+}
+
+
+function bfeExit_event() {
+  bfe_isExit=1
+  tput cnorm  #Set cursor to normal visibility
+  stty echo  #Print keystrokes
+  tput rmcup
+}
+
+#Trap for window size change
+trap 'bfeWinch_event' SIGWINCH
+#Trap for termination event
+trap 'bfeExit_event' SIGTERM SIGKILL SIGINT
+
+
+
+
+
+
+
+
+
+
+# Main function
+# Param 1 : varname to store selected file path (optional)
+# Param 2 : str Title to display on explorer (optional)
+# Optional params can be passed with '-'
+function BashFileExplorer() {
+  local _key
+  
+  [ -n "${2}" ] && [ "${2}" != "-" ] && bfe_winTitle="${2}"  #Set window Title Bar
+  
+  tput smcup
+  tput civis  #Set cursor invisible
+  stty -echo  #Do not print keystrokes
+  
+  
+  while [ $bfe_isExit -eq 0 ] # infinite loop
+  do
+    if [ $bfe_isFullReload -eq 1 ]; then
+      bfeDrawWindow && bfe_isFullReload=0
+    fi
+    
+    [ $bfe_isFullReload -eq 0 ] && bfeDrawUI && tput cup $bfe_winh 0 #DrawUI and Set cursor to the end if no reload needed
+    
+    
+    _key=$(bfeAwaitUserMovement 1) || continue
+    bfe_isReload=1
+      
+    if [ "$_key" = "Up" ] && [ $bfe_cursor -ne 0 ]; then                  # UP: Move file cursor up
+      bfe_oldcursor=$bfe_cursor
+      bfe_cursor=$bfe_cursor-1
+      bfe_isSelectChanged=1
+    elif [ "$_key" = "Down" ] && [ $bfe_cursor -lt $bfe_pageLen ]; then   # DOWN : Move file cursor down
+      bfe_oldcursor=$bfe_cursor
+      bfe_cursor=$bfe_cursor+1  
+      bfe_isSelectChanged=1
+    elif [ "$_key" = "Left" ] && [ $bfe_page -ne 0 ]; then                # LEFT : Move to previous page
+      bfe_page+=-1
+      #bfe_cursor=0
+      bfe_oldcursor=0
+      bfe_isSelectChanged=1
+      bfe_isPageChanged=1
+    elif [ "$_key" = "Right" ] && [ $bfe_page -lt $((bfe_pagesNum-1)) ]; then 	# RIGHT : Move to next page
+      bfe_page+=1
+      #bfe_cursor=0
+      bfe_oldcursor=0
+      bfe_isSelectChanged=1
+      bfe_isPageChanged=1
+    elif [ "$_key" = "Enter" ]; then                                      # ENTER : enter directory or select file
+      declare -i idx=$bfe_maxFilesPerPage*$bfe_page+$bfe_cursor
+      if [ -d ${PWD}/${bfe_FileNameList[$idx]} ]; then     
+        cd ${PWD}/${bfe_FileNameList[$idx]}          # move to /target
+        bfe_cursor=0
+        bfe_oldcursor=0
+        bfe_page=0
+        bfe_isPathChanged=1
+        bfe_isSelectChanged=1
+        bfe_isPageChanged=1
+      else
+        if [ -n "$1" ] && [ "${1}" != "-" ]; then
+          eval "$1=\"${PWD}/${bfe_FileNameList[$idx]}\""
+          bfeExit_event
+        fi
+      fi
+    elif [ "$_key" = "Backspace" ]; then                                  # BACKSPACE : Return directory
+      if [ -d ".." ]; then
+        cd ..
+        bfe_cursor=0
+        bfe_oldcursor=0
+        bfe_page=0
+        bfe_isPathChanged=1
+        bfe_isSelectChanged=1
+        bfe_isPageChanged=1
+      fi
+    elif [ "$_key" == "Space" ]; then
+      declare -i idx=$bfe_maxFilesPerPage*$bfe_page+$bfe_cursor
+      bfePrintFileInfo "${PWD}/${bfe_FileNameList[$idx]}"
+    elif [ "$_key" = "Escape" ]; then                                     # ESCAPE : Exit file manager
+      bfeExit_event
+    else 
+      continue
+    fi 
+  done
+}
+
+
+
+# FUNCTION await for user to press arrow keys, Spacebar, Enter or Esc
+# Param 1: timeout of the command (optional)
+# Echo: a string with the name of the key pressed or empty if no valid
+# Returns: 0 if successfull; other for an error.
+bfeAwaitUserMovement() {
+  local input_key=''
+  local char
+  local isEsc=0
+  local timeout="${1:+-t $1}"
+  
+  POSIXLY_CORRECT=1 read -r -s -N 1 $timeout char || return 1 # Exit when Ctrl+C.
+  
+  # Special cases for certain control characters.
+  case "${char}" in
+    $'\e')
+      # If is an escaped key
+      isEsc=1
+      ;;
+    $'\n')
+      input_key='Enter'
+      ;;
+    $'\177')
+      input_key='Backspace'
+      ;;
+    ' ')
+      input_key='Space'
+      ;;
+      #Ignore the rest of keys
+  esac
+  
+  if [ $isEsc -eq 1 ]; then
+    if read -r -s -N 1 -t 0.001 char; then
+      [ "${char}" == '[' ] || return 2
+      isEsc=1 #Escaped sequence continues
+    else
+      input_key='Escape' # Just pressed the Escape key.
+      isEsc=0 #No more escaped sequence
+    fi
+  fi
+  
+  # Read the escaped key
+  if [ $isEsc -eq 1 ]; then
+    local char
+    read -r -s -N 1 -t 0.001 char || return 3
+
+    # Cursor movement keys.
+    case "${char}" in
+      A)
+        input_key='Up'
+        ;;
+      B)
+        input_key='Down'
+        ;;
+      C)
+        input_key='Right'
+        ;;
+      D)
+        input_key='Left'
+        ;;
+    esac
+  fi
+  
+  echo "${input_key}"  #Print the input key
+  return 0
+}
+
+
+function bfeBlank() { # make Blank function   $1 is number of blanks
+  local ret=""
+  for x in $(seq $1); do
+		ret="$ret "
+	done
+  echo -n "$ret"
+}
+
+function bfeDash() { # make Blank function   $1 is number of blanks
+  local ret=""
+  for x in $(seq $1); do
+		ret="$ret-"
+	done
+  echo -n "$ret"
+}
+
+function bfeCheckMinimalSize () {
+  local aux
+  declare -i flag=0
+
+  [ $bfe_winw -lt 66 ] && flag+=1
+  [ $bfe_winh -lt 16 ] && flag+=1
+  
+  if [ $flag -gt 0 ]; then
+    clear
+    echo "+===========================+"
+    echo "|    Minimal Screen size    |"
+    echo "|          not met          |"
+    echo "|           66x18           |"
+    echo "|   Resize screen first!!   |"
+    echo "+===========================+"
+    return 1
+  fi
+  return 0
+}
+
+
+
+function bfeDrawWindow() {
+  local pPath=1                    #Path bar start line
+  local pInfo=$(($bfe_winh - 3))   #Info bar start line
+  declare -i pTitle=$bfe_winsep-${#bfe_winTitle}/2  #Title location at middle
+  
+  #Check if screen mets minimal requirements
+  bfeCheckMinimalSize || return
+  
+  clear
+  
+  # Draw Title bar
+	tput cup 0 0
+  echo -en "${bfe_TitleColor}$(bfeBlank ${bfe_winw})${bfe_ClearColor}"
+  tput cup 0 $pTitle
+	echo -en "${bfe_TitleColor}${bfe_winTitle}"   # Background-color blue , gray
+  
+  #Print window background
+  #for ((i=1;i<${bfe_winh};i++))
+  tput cup 4 0
+  for x in $(seq 8 ${bfe_winh}); do
+    echo -e "${bfe_BlackText}|${bfe_Background}$(bfeBlank $(($bfe_winsep -1)))${bfe_BlackText}|${bfe_Background}$(bfeBlank $(($bfe_winw - $bfe_winsep -2)))|${bfe_ClearColor}"   # Make every tiles gray using blank
+  done
+  
+  #Path bar
+  tput cup $pPath 0
+  echo -e "${bfe_BlackText}$(bfeDash ${bfe_winw})"
+  echo -e "|$(bfeBlank $((${bfe_winw} -2)))|"
+  echo -e "$(bfeDash ${bfe_winw})"
+  
+  #Info bar
+  tput cup $pInfo 0
+  echo -e "${bfe_BlackText}$(bfeDash ${bfe_winw})"
+  echo -e "|$(bfeBlank $((${bfe_winw} -2)))|"
+  echo -e "$(bfeDash ${bfe_winw})${bfe_ClearColor}"
+  
+}
+
+
+
+
+
+function bfeDrawUI() {  # Draw UI
+  local pPath="2 2"                    #Path bar data position
+  local pInfo="$(($bfe_winh - 2)) 2"   #Info bar data position
+  local pSep=$(($bfe_winw / 2))    #Sepparator location width
+  
+
+	# Print current path and directory
+  if [ $bfe_isPathChanged -eq 1 ]; then
+	  tput cup $pPath
+    local tmp="Current path: `pwd`"
+	  echo -e "${bfe_BlackText}${tmp}${bfe_Background}$(bfeBlank $(($bfe_winw - ${#tmp} - 3)) )${bfe_ClearColor}"
+    
+    bfeDrawInfobar
+    
+    bfe_isPathChanged=0
+  fi
+  
+  # Print current directory page
+  if [ $bfe_isPageChanged -eq 1 ]; then
+    bfeDrawDirectory
+    bfe_isPageChanged=0
+  fi
+  
+  # Print current selection
+  if [ $bfe_isSelectChanged -eq 1 ]; then
+    declare -i oldidx=$bfe_maxFilesPerPage*$bfe_page+$bfe_oldcursor
+    declare -i newidx=$bfe_maxFilesPerPage*$bfe_page+$bfe_cursor
+    
+    # Clear old cursor
+    bfePrintNormalLine $bfe_oldcursor "${bfe_FileNameList[$oldidx]}" "${bfe_FilePermList[$oldidx]}" "${bfe_FileSizeList[$oldidx]}"
+    
+    # Color current cursor
+    bfePrintSelectedLine $bfe_cursor "${bfe_FileNameList[$newidx]}" "${bfe_FilePermList[$newidx]}" "${bfe_FileSizeList[$newidx]}"
+    
+    bfe_isSelectChanged=0
+  fi
+
+  # Clear old cursor
+  #declare -i oldcup=bfe_oldcursor+4
+  #tput cup $oldcup 1
+  #echo -e "${bfe_Background}$(bfeBlank $(($pSep -1)))${bfe_ClearColor}"
+
+	# Color current cursor
+  #declare -i expcur=bfe_cursor+4
+	#tput cup $expcur 1
+	#echo -e "${bfe_CursorColor}$(bfeBlank $(($pSep -1)))${bfe_ClearColor}"
+
+  
+  #DrawSelection
+	#tput cup 27 0
+}
+
+
+
+function bfeDrawInfobar() {  # print Number of Fils, Directories and size of current Directory size
+  declare -i cuph=$bfe_winh-2
+  local NumberOfDir=$(ls -Al ${PWD} | tail -n+2 | grep "^d" | wc -l)
+  local NumberOfFiles=$(ls -Al ${PWD} | tail -n+2 | grep -v "^d" | wc -l)
+  #local CurrentDirSize= #$(du -sh | awk '{print $1}')
+  
+  tput cup $cuph 1
+  echo -en "${bfe_Background}$(bfeBlank 22)${bfe_ClearColor}"
+  
+  tput cup $cuph 3
+  echo -e "${bfe_BlackText}D : ${NumberOfDir}${bfe_ClearColor}"
+  tput cup $cuph 12
+  echo -e "${bfe_BlackText}F : ${NumberOfFiles}${bfe_ClearColor}" 
+  #tput cup $cuph 35
+  #echo -e "${bfe_BlackText}Size : ${CurrentDirSize}${bfe_ClearColor}"
+  if [ -n "$bfe_message" ]; then
+    bfePrintMessage "$bfe_message"
+  fi
+}
+
+
+# Param 1 : str of the message
+function bfePrintMessage() {
+  declare -i cuph=$bfe_winh-2
+  tput cup $cuph 22
+  echo -en "${bfe_Background}$(bfeBlank $((bfe_winw-22-1)))${bfe_ClearColor}"
+  tput cup $cuph 22
+  local msgcut="$(echo " $bfe_message " | cut -c-$((bfe_winw-25)))"
+  echo -en "${bfe_TitleColor}${msgcut}${bfe_ClearColor}"
+}
+
+
+# Param 1 : str file path (optional)
+function bfePrintFileInfo() {
+  declare -i cupH=4
+  declare -i cupW=$bfe_winsep+2
+  declare -i maxH=$bfe_winh-8
+  declare -i maxW=$bfe_winsep-2-3
+  
+  for i in $(seq $cupH $maxH); do
+    tput cup $i $cupW
+    echo -en "${bfe_Background}$(bfeBlank $maxW)${bfe_ClearColor}"
+  done
+  
+  if [ -n "$1" ]; then
+    local info=$(file -p ${PWD}/${bfe_FileNameList[$idx]} 2>&1 | fmt -w$maxW)
+    
+    declare -i cnt=0
+    while IFS= read -r iwline; do
+      tput cup $((cupH+cnt)) $cupW
+      echo -en "${bfe_BlackText}$iwline${bfe_ClearColor}"
+      cnt+=1
+    done <<<"$info"
+  fi
+}
+
+
+function bfeDrawDirectory() {  # print Driectory files
+	unset bfe_FileNameList; unset bfe_FilePermList; unset bfe_FileSizeList
+  
+  declare -i cupStartH=4  # hPos
+  bfe_maxFilesPerPage=$bfe_winh-7
+  
+  #Clear previous tree
+  for i in $(seq $cupStartH $((cupStartH+bfe_maxFilesPerPage-1))); do
+    tput cup $i 1
+    echo -en "${bfe_Background}$(bfeBlank $(($bfe_winsep -1)))${bfe_ClearColor}"
+  done
+  
+  
+  # Insert all directories and file names into the array
+ 	#declare -ga bfe_FileNameList=($(ls -Ahl ${PWD} | tail -n+2 | grep "^d" | sort -k 9 | awk '{print $9}')) #insert every file name of this dir. sorted by name
+  #bfe_FileNameList+=($(ls -Ahl ${PWD} | tail -n+2 | grep -v "^d" | sort -k 9 | awk '{print $9}')) #insert every file name of this dir. sorted by name
+  local OIFS="$IFS"
+  IFS=$'\n'  #Set IFS as newline to read full name of file as a single element
+  declare -ga bfe_FileNameList=( $(ls -1A --group-directories-first ${PWD}) ) #insert every directory and then files of this dir. sorted by name
+  IFS="$OIFS"
+  
+  # Insert file permissions to array
+	#declare -ga bfe_FilePermList=($(ls -Ahl ${PWD} | tail -n+2 | grep "^d" | sort -k 9 | awk '{print $1}')) #insert every file permission of this dir. sorted by name
+  #bfe_FilePermList+=($(ls -Ahl ${PWD} | tail -n+2 | grep -v "^d" | sort -k 9 | awk '{print $1}')) #insert every file permission of this dir. sorted by name
+  declare -ga bfe_FilePermList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $1}')) #insert every file permission of this dir. sorted by name
+  
+  # Insert file sizes to array
+	#declare -ga bfe_FileSizeList=($(ls -Ahl ${PWD} | tail -n+2 | grep "^d" | sort -k 9 | awk '{print $5}')) 
+  #bfe_FileSizeList+=($(ls -Ahl ${PWD} | tail -n+2 | grep -v "^d" | sort -k 9 | awk '{print $5}'))
+  declare -ga bfe_FileSizeList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $5}'))
+  
+  declare -i fileCount=${#bfe_FileNameList[@]}
+  #declare -i pages=$fileCount/$bfe_maxFilesPerPage
+  bfe_pagesNum=$fileCount/$bfe_maxFilesPerPage
+  #declare -i page=0  #DEBUG move to a control page section
+  [ $(expr $fileCount % $bfe_maxFilesPerPage) -gt 0 ] && bfe_pagesNum+=1
+  
+	
+  declare -i startIndex=$bfe_maxFilesPerPage*$bfe_page
+  if [ $bfe_page -eq $((bfe_pagesNum-1)) ]; then
+    declare -i endIndex=$fileCount-1
+  else
+    declare -i endIndex="$bfe_maxFilesPerPage*($bfe_page+1)-1"
+  fi
+  
+  #Set the page length
+  bfe_pageLen=$endIndex-$startIndex
+  
+  # Format: name  perms  size
+  # perms is 10 char long (12 with spaces)
+  # size is 4 char long (6 with spaces)
+  # name si as long as possible
+  
+  
+  for i in $(seq $startIndex $endIndex); do
+    tput cup $cupStartH 1
+    if [ -d "${PWD}/${bfe_FileNameList[i]}" ]; then  #Select color from type
+      echo -en "${bfe_BlueText}"
+    elif [ -x "${PWD}/${bfe_FileNameList[i]}" ]; then
+      echo -en "${bfe_GreenText}"
+    elif [ -L "${PWD}/${bfe_FileNameList[i]}" ]; then
+      echo -en "${bfe_PurpleText}"
+    else
+      echo -en "${bfe_BlackText}"
+    fi
+    
+    declare -i namemax=$bfe_winsep-19
+    echo -n "$(echo "${bfe_FileNameList[i]}" | cut -c-$namemax)"
+    
+    declare -i infostart=$bfe_winsep-18
+    tput cup $cupStartH $infostart
+    echo -n " ${bfe_FilePermList[i]} "
+    [ ${#bfe_FilePermList[i]} -eq 10 ] && echo -n " "
+    echo -n "${bfe_FileSizeList[i]} "
+    
+    echo -en "${bfe_ClearColor}"
+    cupStartH+=1
+  done
+  
+  declare -i cupPageH=2
+  declare -i cupPageW=$bfe_winw-2-${#bfe_pagesNum}*2-1
+  
+  tput cup $cupPageH $cupPageW
+  echo -en "${bfe_BlackText}$(bfeBlank $((${#bfe_pagesNum}*2-1)))${bfe_ClearColor}"
+  tput cup $cupPageH $cupPageW
+  echo -en "${bfe_BlackText}$((bfe_page+1))/$bfe_pagesNum${bfe_ClearColor}"
+  
+  return
+}
+
+
+#Params:
+#  1: cursor (index from 0)
+#  2: FileName
+#  3: FilePerm
+#  4: FileSize
+function bfePrintNormalLine () {
+  declare -i curpos=4+$1
+  tput cup $curpos 1
+  echo -e "${bfe_Background}$(bfeBlank $(($bfe_winsep -1)))${bfe_ClearColor}"
+  tput cup $curpos 1
+  
+  if [ -d "${PWD}/${2}" ]; then  #Select color from type
+    echo -en "${bfe_BlueText}"
+  elif [ -x "${PWD}/${2}" ]; then
+    echo -en "${bfe_GreenText}"
+  elif [ -L "${PWD}/${2}" ]; then
+      echo -en "${bfe_PurpleText}"
+  else
+    echo -en "${bfe_BlackText}"
+  fi
+    
+  declare -i namemax=$bfe_winsep-19
+  echo -n "$(echo "${2}" | cut -c-$namemax)"
+  
+  declare -i infostart=$bfe_winsep-18
+  tput cup $curpos $infostart
+  echo -n " ${3} "
+  [ ${#3} -eq 10 ] && echo -n " "
+  echo -n "${4} "
+  
+  echo -en "${bfe_ClearColor}"
+}
+
+
+#Params:
+#  1: cursor (index from 0)
+#  2: FileName
+#  3: FilePerm
+#  4: FileSize
+function bfePrintSelectedLine () {
+  declare -i curpos=4+$1
+  tput cup $curpos 1
+  echo -e "${bfe_CursorColor}$(bfeBlank $(($bfe_winsep -1)))${bfe_ClearColor}"
+  tput cup $curpos 1
+  echo -en "${bfe_CursorColor}"
+  
+  declare -i namemax=$bfe_winsep-19
+  echo -n "$(echo "${2}" | cut -c-$namemax)"
+  
+  declare -i infostart=$bfe_winsep-18
+  tput cup $curpos $infostart
+  echo -n " ${3} "
+  [ ${#3} -eq 10 ] && echo -n " "
+  echo -n "${4} "
+  
+  echo -en "${bfe_ClearColor}"
+}
+
+
+
+#Invokation info:
+# Params:
+#   1: varname to store selected file path (optional)
+#   2: str Title to display on explorer (optional)
+#
+# Optional params can be passed with '-'
+
+BashFileExplorer file "Select file to import"
+
+echo "Selected file: $file"
