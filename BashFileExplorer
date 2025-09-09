@@ -65,7 +65,6 @@ function bfeWinch_event() {
   bfe_isFullReload=1
 }
 
-
 function bfeExit_event() {
   bfe_isExit=1
   tput cnorm  #Set cursor to normal visibility
@@ -77,13 +76,6 @@ function bfeExit_event() {
 trap 'bfeWinch_event' SIGWINCH
 #Trap for termination event
 trap 'bfeExit_event' SIGTERM SIGKILL SIGINT
-
-
-
-
-
-
-
 
 
 
@@ -171,7 +163,6 @@ function BashFileExplorer() {
 }
 
 
-
 # FUNCTION await for user to press arrow keys, Spacebar, Enter or Esc
 # Param 1: timeout of the command (optional)
 # Echo: a string with the name of the key pressed or empty if no valid
@@ -247,6 +238,7 @@ function bfeBlank() { # make Blank function   $1 is number of blanks
   echo -n "$ret"
 }
 
+
 function bfeDash() { # make Blank function   $1 is number of blanks
   local ret=""
   for x in $(seq $1); do
@@ -254,6 +246,7 @@ function bfeDash() { # make Blank function   $1 is number of blanks
 	done
   echo -n "$ret"
 }
+
 
 function bfeCheckMinimalSize () {
   local aux
@@ -276,7 +269,6 @@ function bfeCheckMinimalSize () {
 }
 
 
-
 function bfeDrawWindow() {
   local pPath=1                    #Path bar start line
   local pInfo=$(($bfe_winh - 3))   #Info bar start line
@@ -294,7 +286,6 @@ function bfeDrawWindow() {
 	echo -en "${bfe_TitleColor}${bfe_winTitle}"   # Background-color blue , gray
   
   #Print window background
-  #for ((i=1;i<${bfe_winh};i++))
   tput cup 4 0
   for x in $(seq 8 ${bfe_winh}); do
     echo -e "${bfe_BlackText}|${bfe_Background}$(bfeBlank $(($bfe_winsep -1)))${bfe_BlackText}|${bfe_Background}$(bfeBlank $(($bfe_winw - $bfe_winsep -2)))|${bfe_ClearColor}"   # Make every tiles gray using blank
@@ -313,9 +304,6 @@ function bfeDrawWindow() {
   echo -e "$(bfeDash ${bfe_winw})${bfe_ClearColor}"
   
 }
-
-
-
 
 
 function bfeDrawUI() {  # Draw UI
@@ -354,22 +342,7 @@ function bfeDrawUI() {  # Draw UI
     
     bfe_isSelectChanged=0
   fi
-
-  # Clear old cursor
-  #declare -i oldcup=bfe_oldcursor+4
-  #tput cup $oldcup 1
-  #echo -e "${bfe_Background}$(bfeBlank $(($pSep -1)))${bfe_ClearColor}"
-
-	# Color current cursor
-  #declare -i expcur=bfe_cursor+4
-	#tput cup $expcur 1
-	#echo -e "${bfe_CursorColor}$(bfeBlank $(($pSep -1)))${bfe_ClearColor}"
-
-  
-  #DrawSelection
-	#tput cup 27 0
 }
-
 
 
 function bfeDrawInfobar() {  # print Number of Fils, Directories and size of current Directory size
@@ -385,8 +358,7 @@ function bfeDrawInfobar() {  # print Number of Fils, Directories and size of cur
   echo -e "${bfe_BlackText}D : ${NumberOfDir}${bfe_ClearColor}"
   tput cup $cuph 12
   echo -e "${bfe_BlackText}F : ${NumberOfFiles}${bfe_ClearColor}" 
-  #tput cup $cuph 35
-  #echo -e "${bfe_BlackText}Size : ${CurrentDirSize}${bfe_ClearColor}"
+  
   if [ -n "$bfe_message" ]; then
     bfePrintMessage "$bfe_message"
   fi
@@ -443,27 +415,19 @@ function bfeDrawDirectory() {  # print Driectory files
   
   
   # Insert all directories and file names into the array
- 	#declare -ga bfe_FileNameList=($(ls -Ahl ${PWD} | tail -n+2 | grep "^d" | sort -k 9 | awk '{print $9}')) #insert every file name of this dir. sorted by name
-  #bfe_FileNameList+=($(ls -Ahl ${PWD} | tail -n+2 | grep -v "^d" | sort -k 9 | awk '{print $9}')) #insert every file name of this dir. sorted by name
   local OIFS="$IFS"
   IFS=$'\n'  #Set IFS as newline to read full name of file as a single element
-  declare -ga bfe_FileNameList=( $(ls -1A --group-directories-first ${PWD}) ) #insert every directory and then files of this dir. sorted by name
+  declare -ga bfe_FileNameList=( $(ls -1A --group-directories-first ${PWD}) )
   IFS="$OIFS"
   
   # Insert file permissions to array
-	#declare -ga bfe_FilePermList=($(ls -Ahl ${PWD} | tail -n+2 | grep "^d" | sort -k 9 | awk '{print $1}')) #insert every file permission of this dir. sorted by name
-  #bfe_FilePermList+=($(ls -Ahl ${PWD} | tail -n+2 | grep -v "^d" | sort -k 9 | awk '{print $1}')) #insert every file permission of this dir. sorted by name
-  declare -ga bfe_FilePermList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $1}')) #insert every file permission of this dir. sorted by name
+  declare -ga bfe_FilePermList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $1}'))
   
   # Insert file sizes to array
-	#declare -ga bfe_FileSizeList=($(ls -Ahl ${PWD} | tail -n+2 | grep "^d" | sort -k 9 | awk '{print $5}')) 
-  #bfe_FileSizeList+=($(ls -Ahl ${PWD} | tail -n+2 | grep -v "^d" | sort -k 9 | awk '{print $5}'))
   declare -ga bfe_FileSizeList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $5}'))
   
   declare -i fileCount=${#bfe_FileNameList[@]}
-  #declare -i pages=$fileCount/$bfe_maxFilesPerPage
   bfe_pagesNum=$fileCount/$bfe_maxFilesPerPage
-  #declare -i page=0  #DEBUG move to a control page section
   [ $(expr $fileCount % $bfe_maxFilesPerPage) -gt 0 ] && bfe_pagesNum+=1
   
 	
@@ -577,6 +541,9 @@ function bfePrintSelectedLine () {
   
   echo -en "${bfe_ClearColor}"
 }
+
+
+
 
 
 
