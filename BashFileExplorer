@@ -85,6 +85,7 @@ trap 'bfeExit_event' SIGTERM SIGKILL SIGINT
 # Optional params can be passed with '-'
 function BashFileExplorer() {
   local _key
+  local retcode=2
   
   [ -n "${2}" ] && [ "${2}" != "-" ] && bfe_winTitle="${2}"  #Set window Title Bar
   
@@ -139,6 +140,7 @@ function BashFileExplorer() {
         if [ -n "$1" ] && [ "${1}" != "-" ]; then
           eval "$1=\"${PWD}/${bfe_FileNameList[$idx]}\""
           bfeExit_event
+          retcode=0
         fi
       fi
     elif [ "$_key" = "Backspace" ]; then                                  # BACKSPACE : Return directory
@@ -156,10 +158,12 @@ function BashFileExplorer() {
       bfePrintFileInfo "${PWD}/${bfe_FileNameList[$idx]}"
     elif [ "$_key" = "Escape" ]; then                                     # ESCAPE : Exit file manager
       bfeExit_event
+      retcode=1
     else 
       continue
     fi 
   done
+  return $retcode
 }
 
 
