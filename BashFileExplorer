@@ -230,19 +230,16 @@ bfeAwaitUserMovement() {
 }
 
 
-function bfeBlank() { # make Blank function   $1 is number of blanks
+# FUNCTION to fill with a character
+# Param 1 : int Number of blank characters to print
+# Param 2 : str Character to print (optional)
+# Default character is ' '
+function bfeBlank() {
   local ret=""
+  local char=" "
+  [ -n "$2" ] && char="$2"
   for x in $(seq $1); do
-		ret="$ret "
-	done
-  echo -n "$ret"
-}
-
-
-function bfeDash() { # make Blank function   $1 is number of blanks
-  local ret=""
-  for x in $(seq $1); do
-		ret="$ret-"
+		ret="${ret}${char}"
 	done
   echo -n "$ret"
 }
@@ -293,15 +290,15 @@ function bfeDrawWindow() {
   
   #Path bar
   tput cup $pPath 0
-  echo -e "${bfe_BlackText}$(bfeDash ${bfe_winw})"
+  echo -e "${bfe_BlackText}$(bfeBlank ${bfe_winw} -)"
   echo -e "|$(bfeBlank $((${bfe_winw} -2)))|"
-  echo -e "$(bfeDash ${bfe_winw})"
+  echo -e "$(bfeBlank ${bfe_winw} -)"
   
   #Info bar
   tput cup $pInfo 0
-  echo -e "${bfe_BlackText}$(bfeDash ${bfe_winw})"
+  echo -e "${bfe_BlackText}$(bfeBlank ${bfe_winw} -)"
   echo -e "|$(bfeBlank $((${bfe_winw} -2)))|"
-  echo -e "$(bfeDash ${bfe_winw})${bfe_ClearColor}"
+  echo -e "$(bfeBlank ${bfe_winw} -)${bfe_ClearColor}"
   
 }
 
