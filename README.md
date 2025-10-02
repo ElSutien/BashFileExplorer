@@ -28,8 +28,9 @@ There are several ToDos that will be implemented.
 
 - Possibility to select multiple files.
 - Ask the user for exit when Esc is pressed.
-- Show a help message then 'H' char is pressed.
+- Show a help message then 'Ctrl+H' keys are pressed.
 - GoTo directory action.
+- Search/filter files in current dir.
 
 
 ## License
