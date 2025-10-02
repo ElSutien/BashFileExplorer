@@ -78,7 +78,7 @@ function bfeExit_event() {
   bfe_isExit=1
   tput cnorm  #Set cursor to normal visibility
   stty echo  #Print keystrokes
-  tput rmcup
+  [ $bfe_keepSecondary -eq 1 ] || tput rmcup
 }
 
 #Trap for window size change
@@ -98,7 +98,12 @@ function BashFileExplorer() {
   
   [ -n "${2}" ] && [ "${2}" != "-" ] && bfe_winTitle="${2}"  #Set window Title Bar
   
-  tput smcup
+  if [ bfeIsSecondaryScreen ]; then
+    bfe_keepSecondary=1
+  else
+    bfe_keepSecondary=0
+    tput smcup
+  fi
   tput civis  #Set cursor invisible
   stty -echo  #Do not print keystrokes
   
@@ -173,6 +178,22 @@ function BashFileExplorer() {
     fi 
   done
   return $retcode
+}
+
+
+# FUNCTION Check if terminal is already in secondary screen mode
+# Returns: 0 if is in secondary screen mode; other if not.
+bfeIsSecondaryScreen() {
+  local oldtty
+  local response
+  local check
+  oldtty=`stty -g`
+  stty raw -echo min 0  time 5
+  printf '\033[?1049$p'
+  read response
+  stty $oldtty
+  check=$(echo "$response" | tr '\033' '@')
+  [ "$check" == '@[?1049;1$y' ] && return 0 || return 1
 }
 
 
