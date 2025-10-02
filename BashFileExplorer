@@ -98,7 +98,7 @@ function BashFileExplorer() {
   
   [ -n "${2}" ] && [ "${2}" != "-" ] && bfe_winTitle="${2}"  #Set window Title Bar
   
-  if [ bfeIsSecondaryScreen ]; then
+  if bfeIsSecondaryScreen; then
     bfe_keepSecondary=1
   else
     bfe_keepSecondary=0
