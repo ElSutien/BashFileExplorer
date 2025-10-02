@@ -1,8 +1,8 @@
 #!/bin/bash
 
 bfe_NAME="BashFileExplorer"
-bfe_VERSION="1.0"
-bfe_RELEASE_DATE="05/08/2025"
+bfe_VERSION="1.1"
+bfe_RELEASE_DATE="02/10/2025"
 bfe_AUTHOR="ElSutien"
 
 
