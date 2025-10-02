@@ -7,12 +7,21 @@ bfe_AUTHOR="ElSutien"
 
 
 # Declare for Colors
-declare bfe_BlackText="\e[30;47m"   # Text black,  Background gray
-declare bfe_Background="\e[47m"     # 	           Background gray
-declare bfe_TitleColor="\e[30;46m"  # Text black,  Backgounrd blue
-declare bfe_BlueText="\e[34;47m"    # Text blue,   Background gray
-declare bfe_GreenText="\e[32;47m"   # Text green,  Background gray
-declare bfe_PurpleText="\e[35;47m"  # Text purple, Background gray
+#declare bfe_BlackText="\e[30;47m"   # Text black,  Background gray
+#declare bfe_Background="\e[47m"     # 	           Background gray
+#declare bfe_TitleColor="\e[30;46m"  # Text black,  Background blue
+#declare bfe_BlueText="\e[34;47m"    # Text blue,   Background gray
+#declare bfe_GreenText="\e[32;47m"   # Text green,  Background gray
+#declare bfe_PurpleText="\e[35;47m"  # Text purple, Background gray
+#declare bfe_CursorColor="\e[0;43m"  # Text white,  Background yellow
+#declare bfe_ClearColor="\e[0m"      # Default terminal color
+
+declare bfe_BlackText="\e[37;40m"   # Text white,  Background black
+declare bfe_Background="\e[40m"     # 	           Background black
+declare bfe_TitleColor="\e[30;47m"  # Text black,  Background gray
+declare bfe_BlueText="\e[34;40m"    # Text blue,   Background black
+declare bfe_GreenText="\e[32;40m"   # Text green,  Background black
+declare bfe_PurpleText="\e[35;40m"  # Text purple, Background black
 declare bfe_CursorColor="\e[0;43m"  # Text white,  Background yellow
 declare bfe_ClearColor="\e[0m"      # Default terminal color
 
