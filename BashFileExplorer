@@ -79,6 +79,7 @@ function bfeExit_event() {
   tput cnorm  #Set cursor to normal visibility
   stty echo  #Print keystrokes
   [ $bfe_keepSecondary -eq 1 ] || tput rmcup
+  return 0
 }
 
 #Trap for window size change
@@ -111,10 +112,15 @@ function BashFileExplorer() {
   while [ $bfe_isExit -eq 0 ] # infinite loop
   do
     if [ $bfe_isFullReload -eq 1 ]; then
-      bfeDrawWindow && bfe_isFullReload=0
+      bfeDrawWindow
+      bfeDrawUI
+      bfe_isFullReload=0
+    else
+      #DrawUI and Set cursor to the end if no reload needed
+      bfeDrawUI
     fi
     
-    [ $bfe_isFullReload -eq 0 ] && bfeDrawUI && tput cup $bfe_winh 0 #DrawUI and Set cursor to the end if no reload needed
+    tput cup $bfe_winh 0
     
     
     _key=$(bfeAwaitUserMovement 1) || continue
@@ -171,8 +177,7 @@ function BashFileExplorer() {
       declare -i idx=$bfe_maxFilesPerPage*$bfe_page+$bfe_cursor
       bfePrintFileInfo "${PWD}/${bfe_FileNameList[$idx]}"
     elif [ "$_key" = "Escape" ]; then                                     # ESCAPE : Exit file manager
-      bfeExit_event
-      retcode=1
+      bfeExitDialog && bfeExit_event && retcode=1 || bfe_isFullReload=1
     else 
       continue
     fi 
@@ -300,6 +305,39 @@ function bfeCheckMinimalSize () {
 }
 
 
+# FUNCTION Invoke the Exit dialog to ask user to confirm
+# Returns: 0 if confirmed; 1 if aborted.
+function bfeExitDialog(){
+  declare -i ph=($bfe_winh/2)-2
+  declare -i pw=($bfe_winw/2)-15
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}$(bfeBlank 29)${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}  ${bfe_ClearColor}   Exit bash explorer?   ${bfe_TitleColor}  ${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}  ${bfe_ClearColor}$(bfeBlank 25)${bfe_TitleColor}  ${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}  ${bfe_ClearColor}  Esc             Enter  ${bfe_TitleColor}  ${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}$(bfeBlank 29)${bfe_ClearColor}"
+  
+  local flag=1
+  while [ $flag -eq 1 ]; do
+    _key=$(bfeAwaitUserMovement) || return 0
+    
+    if [ "$_key" = "Escape" ]; then
+      return 1
+    elif [ "$_key" = "Enter" ]; then
+      return 0
+    fi
+  done
+}
+
+
 function bfeDrawWindow() {
   local pPath=1                    #Path bar start line
   local pInfo=$(($bfe_winh - 3))   #Info bar start line
@@ -344,7 +382,7 @@ function bfeDrawUI() {  # Draw UI
   
 
 	# Print current path and directory
-  if [ $bfe_isPathChanged -eq 1 ]; then
+  if [ $bfe_isPathChanged -eq 1 ] || [ $bfe_isFullReload -eq 1 ]; then
 	  tput cup $pPath
     local tmp="Current path: `pwd`"
 	  echo -e "${bfe_BlackText}${tmp}${bfe_Background}$(bfeBlank $(($bfe_winw - ${#tmp} - 3)) )${bfe_ClearColor}"
@@ -355,13 +393,13 @@ function bfeDrawUI() {  # Draw UI
   fi
   
   # Print current directory page
-  if [ $bfe_isPageChanged -eq 1 ]; then
+  if [ $bfe_isPageChanged -eq 1 ] || [ $bfe_isFullReload -eq 1 ]; then
     bfeDrawDirectory
     bfe_isPageChanged=0
   fi
   
   # Print current selection
-  if [ $bfe_isSelectChanged -eq 1 ]; then
+  if [ $bfe_isSelectChanged -eq 1 ] || [ $bfe_isFullReload -eq 1 ]; then
     declare -i oldidx=$bfe_maxFilesPerPage*$bfe_page+$bfe_oldcursor
     declare -i newidx=$bfe_maxFilesPerPage*$bfe_page+$bfe_cursor
     
@@ -402,7 +440,7 @@ function bfePrintMessage() {
   tput cup $cuph 22
   echo -en "${bfe_Background}$(bfeBlank $((bfe_winw-22-1)))${bfe_ClearColor}"
   tput cup $cuph 22
-  local msgcut="$(echo " $bfe_message " | cut -c-$((bfe_winw-25)))"
+  local msgcut="$(echo " $* " | cut -c-$((bfe_winw-25)))"
   echo -en "${bfe_TitleColor}${msgcut}${bfe_ClearColor}"
 }
 

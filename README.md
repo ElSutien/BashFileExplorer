@@ -18,7 +18,7 @@ It can be useful for helping other applications when prompt the user to choose a
 - Use **left/right arrows** to change pages of the actual directory.
 - **Enter** will open a directory or choose the selected file.
 - **Backspace** will go to back directory.
-- **Escape** will close the file explorer and return.
+- **Escape** will prompt the exit dialog to the user.
 - **Spacebar** will print information about the selected file.
 
 
@@ -27,7 +27,7 @@ It can be useful for helping other applications when prompt the user to choose a
 There are several ToDos that will be implemented.
 
 - Possibility to select multiple files.
-- Ask the user for exit when Esc is pressed.
+- ~~Ask the user for exit when Esc is pressed.~~
 - Show a help message then 'Ctrl+H' keys are pressed.
 - GoTo directory action.
 - Search/filter files in current dir.
