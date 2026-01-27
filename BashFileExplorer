@@ -52,10 +52,12 @@ declare -i bfe_isFullReload=1
 declare -i bfe_isPathChanged=1
 declare -i bfe_isSelectChanged=1
 declare -i bfe_isPageChanged=1
+declare -i bfe_isWinUnderSize=0
 declare -i bfe_isExit=0
 
 
 function bfeWinch_event() {
+  sleep 2
   bfe_winw=$(tput cols)
   bfe_winh=$(tput lines)-2
   bfe_winsep=$bfe_winw/2
@@ -111,8 +113,15 @@ function BashFileExplorer() {
   
   while [ $bfe_isExit -eq 0 ] # infinite loop
   do
+    
+    if [ $bfe_isWinUnderSize -eq 1 ]; then #If terminal under size alert, block processing
+      sleep 1
+      bfeCheckMinimalSize
+      continue
+    fi
+    
     if [ $bfe_isFullReload -eq 1 ]; then
-      bfeDrawWindow
+      bfeDrawWindow || continue
       bfeDrawUI
       bfe_isFullReload=0
     else
@@ -178,6 +187,9 @@ function BashFileExplorer() {
       bfePrintFileInfo "${PWD}/${bfe_FileNameList[$idx]}"
     elif [ "$_key" = "Escape" ]; then                                     # ESCAPE : Exit file manager
       bfeExitDialog && bfeExit_event && retcode=1 || bfe_isFullReload=1
+    elif [ "$_key" = "G" ]; then                                     # G : goto
+      bfeGoToDialog
+      bfe_isFullReload=1
     else 
       continue
     fi 
@@ -228,6 +240,9 @@ bfeAwaitUserMovement() {
       ;;
     ' ')
       input_key='Space'
+      ;;
+    [a-z]|[A-Z])
+      input_key=${char^^}
       ;;
       #Ignore the rest of keys
   esac
@@ -284,6 +299,7 @@ function bfeBlank() {
 }
 
 
+# FUNCTION check if terminal meets minimum size requirements and print warning
 function bfeCheckMinimalSize () {
   local aux
   declare -i flag=0
@@ -292,14 +308,19 @@ function bfeCheckMinimalSize () {
   [ $bfe_winh -lt 16 ] && flag+=1
   
   if [ $flag -gt 0 ]; then
-    clear
-    echo "+===========================+"
-    echo "|    Minimal Screen size    |"
-    echo "|          not met          |"
-    echo "|           66x18           |"
-    echo "|   Resize screen first!!   |"
-    echo "+===========================+"
+    if [ $bfe_isWinUnderSize -eq 0 ]; then 
+      clear
+      echo "+===========================+"
+      echo "|    Minimal Screen size    |"
+      echo "|          not met          |"
+      echo "|           66x18           |"
+      echo "|   Resize screen first!!   |"
+      echo "+===========================+"
+      bfe_isWinUnderSize=1
+    fi
     return 1
+  else
+    bfe_isWinUnderSize=0
   fi
   return 0
 }
@@ -335,6 +356,86 @@ function bfeExitDialog(){
       return 0
     fi
   done
+}
+
+
+
+function bfeGoToDialog(){
+  local path
+  declare -i ph=2
+  declare -i pw=2
+  declare -i lw=$bfe_winw-4
+  
+  tput cup $ph $pw
+  echo -en "${bfe_BlackText}$(bfeBlank $lw)"
+  tput cup $ph $pw
+  echo -en "${bfe_BlackText}"
+  
+  tput cnorm  #Set cursor visble
+  stty echo  #Print keystrokes
+  
+  set -o emacs
+  bind -r '\C-i'
+  bind -r '\e\e\000'
+  bind -r '\eg'
+  bind -r '\e\C-i'
+  bind -r '\e$'
+  bind -r '\e~'
+  bind -r '\e{'
+  bind -r '\e@'
+  bind -r '\e/'
+  bind -r '\e!'
+  read -e -p "GoTo: " -i "$PWD" path
+  bind '"\C-i": complete'
+  set +o emacs
+  
+  tput civis  #Set cursor invisible
+  stty -echo  #Do not print keystrokes
+  
+  if [ -d "$path" ]; then
+      cd "$path"
+  fi
+}
+
+
+function bfeGoToDialog2(){
+  local path
+  declare -i ph=($bfe_winh/2)-2
+  declare -i pw=5
+  declare -i lw=$bfe_winw-10
+  
+  declare -i lw2=($bfe_winw/2)-15
+  
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}$(bfeBlank $lw)${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}  ${bfe_ClearColor}$(bfeBlank $lw2) GoTo Directory $(bfeBlank $lw2)${bfe_TitleColor}  ${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}  ${bfe_ClearColor}$(bfeBlank $((lw-4)))${bfe_TitleColor}  ${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}  ${bfe_ClearColor}  GoTo: $(bfeBlank $((lw-12)))${bfe_TitleColor}  ${bfe_ClearColor}"
+  ph+=1
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}$(bfeBlank $lw)${bfe_ClearColor}"
+  
+  ph=($bfe_winh/2)+1
+  pw=15
+  tput cup $ph $pw
+  
+  tput cnorm  #Set cursor visble
+  stty echo  #Print keystrokes
+  
+  set -o emacs
+  bind -r '\C-i'
+  read -e -i "$PWD" path
+  bind '"\C-i": complete'
+  set +o emacs
+  
+  tput civis  #Set cursor invisible
+  stty -echo  #Do not print keystrokes
 }
 
 
