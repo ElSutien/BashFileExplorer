@@ -367,6 +367,24 @@ function bfeExitDialog(){
 }
 
 
+# FUNCTION Perform a directory autocompletion for READLINE library
+# For use as keybind
+function bfeDirComplete(){
+  local wd="${READLINE_LINE%/*}"
+  local ds="${READLINE_LINE##*/}"
+  local dirs="$(find $wd -maxdepth 1 -type d -name "$ds*" -printf "%f\n" 2>/dev/null)"
+  local dirn="$(echo $dirs | wc -w)"
+  
+  if [ $dirn -eq 0 ]; then  #If no predicted entries: return
+    return 0
+  elif [ $dirn -eq 1 ]; then  #If only one predicted entrie: select it
+    READLINE_LINE="${wd}/${dirs}"
+    READLINE_POINT="${#READLINE_LINE}"
+    return 0
+  fi
+}
+
+
 function bfeGoToDialog(){
   local path
   declare -i ph=2
@@ -393,10 +411,12 @@ function bfeGoToDialog(){
   bind -r '\e/'
   bind -r '\e!'
   
-  bind '"\C-w": kill-whole-line'
+  bind '"\C-w": kill-whole-line'  #Set keybind for cancel input
   bind '"\e": "\C-w\C-d"'
+  bind -x '"\t":"bfeDirComplete"'  #Set keybind to Tab for autocompletion
   read -e -p "| GoTo: " -i "$PWD" path
   
+  bind -r '\t'
   bind '"\C-i": complete'
   set +o emacs
   
