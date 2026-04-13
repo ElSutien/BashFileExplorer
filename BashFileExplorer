@@ -367,7 +367,6 @@ function bfeExitDialog(){
 }
 
 
-
 function bfeGoToDialog(){
   local path
   declare -i ph=2
@@ -376,7 +375,7 @@ function bfeGoToDialog(){
   
   tput cup $ph $pw
   echo -en "${bfe_BlackText}$(bfeBlank $lw)"
-  tput cup $ph $pw
+  tput cup $ph 0
   echo -en "${bfe_BlackText}"
   
   tput cnorm  #Set cursor visble
@@ -393,7 +392,11 @@ function bfeGoToDialog(){
   bind -r '\e@'
   bind -r '\e/'
   bind -r '\e!'
-  read -e -p "GoTo: " -i "$PWD" path
+  
+  bind '"\C-w": kill-whole-line'
+  bind '"\e": "\C-w\C-d"'
+  read -e -p "| GoTo: " -i "$PWD" path
+  
   bind '"\C-i": complete'
   set +o emacs
   
