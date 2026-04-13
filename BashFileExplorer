@@ -1,8 +1,8 @@
 #!/bin/bash
 
 bfe_NAME="BashFileExplorer"
-bfe_VERSION="1.1"
-bfe_RELEASE_DATE="02/10/2025"
+bfe_VERSION="1.2"
+bfe_RELEASE_DATE="13/04/2026"
 bfe_AUTHOR="ElSutien"
 
 
@@ -378,7 +378,11 @@ function bfeDirComplete(){
   if [ $dirn -eq 0 ]; then  #If no predicted entries: return
     return 0
   elif [ $dirn -eq 1 ]; then  #If only one predicted entrie: select it
-    READLINE_LINE="${wd}/${dirs}"
+    if [ "$ds" == "$dirs" ]; then
+      READLINE_LINE="${wd}/${dirs}/"
+    else
+      READLINE_LINE="${wd}/${dirs}"
+    fi
     READLINE_POINT="${#READLINE_LINE}"
     return 0
   fi
@@ -516,7 +520,7 @@ function bfeDrawUI() {  # Draw UI
 	# Print current path and directory
   if [ $bfe_isPathChanged -eq 1 ] || [ $bfe_isFullReload -eq 1 ]; then
 	  tput cup $pPath
-    local tmp="Current path: `pwd`"
+    local tmp="Path: `pwd`"
 	  echo -e "${bfe_BlackText}${tmp}${bfe_Background}$(bfeBlank $(($bfe_winw - ${#tmp} - 3)) )${bfe_ClearColor}"
     
     bfeDrawInfobar
