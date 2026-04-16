@@ -54,6 +54,7 @@ declare -i bfe_isSelectChanged=1
 declare -i bfe_isPageChanged=1
 declare -i bfe_isWinUnderSize=0
 declare -i bfe_isExit=0
+declare -i bfe_isShowHidden=0
 
 
 function bfeWinch_event() {
@@ -198,7 +199,7 @@ function BashFileExplorer() {
     elif [ "$_key" = "G" ]; then                                     # G : goto
       bfeGoToDialog
       bfe_isFullReload=1
-    elif [ "$_key" = "H" ]; then                                     # H : help
+    elif [ "$_key" = "F1" ]; then                                     # F1 : Show help dialog
       bfeHelpDialog
       bfe_isFullReload=1
     else
@@ -241,7 +242,7 @@ bfeGetCursorPos() {
 bfeAwaitUserMovement() {
   local input_key=''
   local char
-  local isEsc=0
+  local isEsc=0 isF=0
   local timeout="${1:+-t $1}"
   
   POSIXLY_CORRECT=1 read -r -s -N 1 $timeout char || return 1 # Exit when Ctrl+C.
@@ -269,8 +270,8 @@ bfeAwaitUserMovement() {
   
   if [ $isEsc -eq 1 ]; then
     if read -r -s -N 1 -t 0.001 char; then
-      [ "${char}" == '[' ] || return 2
-      isEsc=1 #Escaped sequence continues
+      [ "${char}" == '[' ] || isEsc=0 #Escaped sequence continues or abort
+      [ "${char}" == 'O' ] && isF=1 #Function sequence continues
     else
       input_key='Escape' # Just pressed the Escape key.
       isEsc=0 #No more escaped sequence
@@ -279,7 +280,6 @@ bfeAwaitUserMovement() {
   
   # Read the escaped key
   if [ $isEsc -eq 1 ]; then
-    local char
     read -r -s -N 1 -t 0.001 char || return 3
 
     # Cursor movement keys.
@@ -295,6 +295,27 @@ bfeAwaitUserMovement() {
         ;;
       D)
         input_key='Left'
+        ;;
+    esac
+  fi
+  
+  # Read the function key
+  if [ $isF -eq 1 ]; then
+    read -r -s -N 1 -t 0.001 char || return 3
+
+    # 1st block.
+    case "${char}" in
+      P)
+        input_key='F1'
+        ;;
+      Q)
+        input_key='F2'
+        ;;
+      R)
+        input_key='F3'
+        ;;
+      S)
+        input_key='F4'
         ;;
     esac
   fi
@@ -551,10 +572,10 @@ function bfeHelpDialog(){
   echo -n "Up/Down - Move up/down        Right/Left - Change pages   "
   ph+=1
   tput cup $ph $pw
-  echo -n "G - GoTo direct path          H - Show this help dialog   "
+  echo -n "G - GoTo direct path          H - Show hidden files       "
   ph+=1
   tput cup $ph $pw
-  echo -n "Esc - Exit / cancel                                       "
+  echo -n "Esc - Exit / cancel           F1 - Show this help dialog  "
   
   
   local flag=1
