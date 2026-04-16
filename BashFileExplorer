@@ -1,8 +1,8 @@
 #!/bin/bash
 
 bfe_NAME="BashFileExplorer"
-bfe_VERSION="1.2"
-bfe_RELEASE_DATE="13/04/2026"
+bfe_VERSION="1.3"
+bfe_RELEASE_DATE="16/04/2026"
 bfe_AUTHOR="ElSutien"
 
 
@@ -199,6 +199,11 @@ function BashFileExplorer() {
     elif [ "$_key" = "G" ]; then                                     # G : goto
       bfeGoToDialog
       bfe_isFullReload=1
+    elif [ "$_key" = "H" ]; then                                     # H : ShowHidden
+      bfe_isShowHidden=1-$bfe_isShowHidden  #Alternate value
+      bfe_isPathChanged=1  #Reload path
+      bfe_isSelectChanged=1
+      bfe_isPageChanged=1
     elif [ "$_key" = "F1" ]; then                                     # F1 : Show help dialog
       bfeHelpDialog
       bfe_isFullReload=1
@@ -672,20 +677,28 @@ function bfeDrawUI() {  # Draw UI
 # SCOPE Only in info bar draws the number of files, num of directories and size of current dir.
 function bfeDrawInfobar() {
   declare -i cuph=$bfe_winh-2
-  local NumberOfDir=$(ls -Al ${PWD} | tail -n+2 | grep "^d" | wc -l)
-  local NumberOfFiles=$(ls -Al ${PWD} | tail -n+2 | grep -v "^d" | wc -l)
+  local hidden=$([ $bfe_isShowHidden -eq 1 ] && echo -n A)
+  local NumberOfDir=$(ls -${hidden}l ${PWD} | tail -n+2 | grep "^d" | wc -l)
+  local NumberOfFiles=$(ls -${hidden}l ${PWD} | tail -n+2 | grep -v "^d" | wc -l)
   #local CurrentDirSize= #$(du -sh | awk '{print $1}')
   
   tput cup $cuph 1
   echo -en "${bfe_Background}$(bfeBlank 22)${bfe_ClearColor}"
   
   tput cup $cuph 3
-  echo -e "${bfe_BlackText}D : ${NumberOfDir}${bfe_ClearColor}"
+  echo -en "${bfe_BlackText}D : ${NumberOfDir}${bfe_ClearColor}"
   tput cup $cuph 12
-  echo -e "${bfe_BlackText}F : ${NumberOfFiles}${bfe_ClearColor}" 
+  echo -en "${bfe_BlackText}F : ${NumberOfFiles}${bfe_ClearColor}" 
   
   if [ -n "$bfe_message" ]; then
     bfePrintMessage "$bfe_message"
+  fi
+  
+  tput cup $cuph $((bfe_winw-5))
+  if [ $bfe_isShowHidden -eq 1 ]; then
+    echo -en "${bfe_BlackText}[H]${bfe_ClearColor}"
+  else
+    echo -en "${bfe_BlackText}   ${bfe_ClearColor}"
   fi
 }
 
@@ -733,6 +746,7 @@ function bfeDrawDirectory() {  # print Driectory files
   
   declare -i cupStartH=4  # hPos
   #bfe_maxFilesPerPage=$bfe_winh-7
+  local hidden=$([ $bfe_isShowHidden -eq 1 ] && echo -n A)
   
   #Clear previous tree
   for i in $(seq $cupStartH $((cupStartH+bfe_maxFilesPerPage-1))); do
@@ -744,14 +758,14 @@ function bfeDrawDirectory() {  # print Driectory files
   # Insert all directories and file names into the array
   local OIFS="$IFS"
   IFS=$'\n'  #Set IFS as newline to read full name of file as a single element
-  declare -ga bfe_FileNameList=( $(ls -1A --group-directories-first ${PWD}) )
+  declare -ga bfe_FileNameList=( $(ls -1${hidden} --group-directories-first ${PWD}) )
   IFS="$OIFS"
   
   # Insert file permissions to array
-  declare -ga bfe_FilePermList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $1}'))
+  declare -ga bfe_FilePermList=($(ls -${hidden}hl --group-directories-first ${PWD} | tail -n+2 | awk '{print $1}'))
   
   # Insert file sizes to array
-  declare -ga bfe_FileSizeList=($(ls -Ahl --group-directories-first ${PWD} | tail -n+2 | awk '{print $5}'))
+  declare -ga bfe_FileSizeList=($(ls -${hidden}hl --group-directories-first ${PWD} | tail -n+2 | awk '{print $5}'))
   
   declare -i fileCount=${#bfe_FileNameList[@]}
   bfe_pagesNum=$fileCount/$bfe_maxFilesPerPage
