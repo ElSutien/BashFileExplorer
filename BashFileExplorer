@@ -198,7 +198,10 @@ function BashFileExplorer() {
     elif [ "$_key" = "G" ]; then                                     # G : goto
       bfeGoToDialog
       bfe_isFullReload=1
-    else 
+    elif [ "$_key" = "H" ]; then                                     # H : help
+      bfeHelpDialog
+      bfe_isFullReload=1
+    else
       continue
     fi 
   done
@@ -258,7 +261,7 @@ bfeAwaitUserMovement() {
     ' ')
       input_key='Space'
       ;;
-    [a-z]|[A-Z])
+    [a-z]|[A-Z]|[0-9])
       input_key=${char^^}
       ;;
       #Ignore the rest of keys
@@ -348,6 +351,7 @@ function bfeCheckMinimalSize () {
 function bfeExitDialog(){
   declare -i ph=($bfe_winh/2)-2
   declare -i pw=($bfe_winw/2)-15
+  local _key
   tput cup $ph $pw
   echo -en "${bfe_TitleColor}$(bfeBlank 29)${bfe_ClearColor}"
   ph+=1
@@ -501,6 +505,66 @@ function bfeGoToDialog2(){
   
   tput civis  #Set cursor invisible
   stty -echo  #Do not print keystrokes
+}
+
+
+function bfeHelpDialog(){
+  declare -i lw=$bfe_winw-10      #Length width
+  declare -i lw2=$lw-4            #Length width 2
+  declare -i lh=20                #Length height
+  declare -i ih=($bfe_winh/2)-10  #Init height
+  declare -i iw=5                 #Init width
+  declare -i ph=$ih               #Point height
+  declare -i pw=$iw               #Point width
+  
+  local i
+  
+  #Print dialog
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}$(bfeBlank $lw)${bfe_ClearColor}"
+  ph+=1
+  for i in $(seq $((lh-2))); do
+    tput cup $ph $pw
+    echo -en "${bfe_TitleColor}  ${bfe_ClearColor}$(bfeBlank $lw2)${bfe_TitleColor}  ${bfe_ClearColor}"
+    ph+=1
+  done
+  tput cup $ph $pw
+  echo -en "${bfe_TitleColor}$(bfeBlank $lw)${bfe_ClearColor}"
+  
+  
+  #Print content
+  ph=$ih+2
+  pw=$iw+4
+  tput cup $ph $pw
+  echo -n "$bfe_NAME v$bfe_VERSION ($bfe_RELEASE_DATE) by $bfe_AUTHOR"
+  ph+=2
+  tput cup $ph $pw
+  echo -n "This is a basic console file explorer for searching files"
+  ph+=2
+  tput cup $ph $pw
+  echo -n "                         HOTKEYS                          "
+  ph+=2
+  tput cup $ph $pw
+  echo -n "Enter - Select file / move    Backspace - Move back       "
+  ph+=1
+  tput cup $ph $pw
+  echo -n "Up/Down - Move up/down        Right/Left - Change pages   "
+  ph+=1
+  tput cup $ph $pw
+  echo -n "G - GoTo direct path          H - Show this help dialog   "
+  ph+=1
+  tput cup $ph $pw
+  echo -n "Esc - Exit / cancel                                       "
+  
+  
+  local flag=1
+  while [ $flag -eq 1 ]; do
+    _key=$(bfeAwaitUserMovement) || return 0
+    
+    if [ "$_key" = "Escape" ]; then
+      return 0
+    fi
+  done
 }
 
 
