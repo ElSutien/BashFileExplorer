@@ -333,7 +333,7 @@ function bfeCheckMinimalSize () {
       echo "+===========================+"
       echo "|    Minimal Screen size    |"
       echo "|          not met          |"
-      echo "|           66x18           |"
+      echo "|           66x16           |"
       echo "|   Resize screen first!!   |"
       echo "+===========================+"
       bfe_isWinUnderSize=1
