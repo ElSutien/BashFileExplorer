@@ -107,6 +107,9 @@ function BashFileExplorer() {
   bfe_isPageChanged=1
   bfe_isWinUnderSize=0
   bfe_isExit=0
+  bfe_cursor=0
+  bfe_oldcursor=0
+  bfe_page=0
   
   [ -n "${2}" ] && [ "${2}" != "-" ] && bfe_winTitle="${2}"  #Set window Title Bar
   
