@@ -477,9 +477,11 @@ function bfeGoToDialog(){
   bind -r '\e@'
   bind -r '\e/'
   bind -r '\e!'
+  bind '"\e\e": :'
   
-  bind '"\C-w": kill-whole-line'  # Set keybind for cancel input
-  bind '"\e": "\C-w\C-d"'
+  bind '"\C-g": kill-whole-line'  # Set keybind for cancel input
+  bind '"\C-d": end-of-file'
+  bind '"\e": "\C-g\C-d"'
   bind -x '"\t":"bfeDirCompletion"'  # Set keybind to Tab for autocompletion
   read -e -p "| GoTo: " -i "$PWD" path
   
